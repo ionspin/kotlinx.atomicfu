@@ -1,6 +1,9 @@
+@file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
+
 package kotlinx.atomicfu
 
 import kotlin.js.JsName
+import kotlin.internal.InlineOnly
 
 /**
  * Creates `Trace` object for tracing atomic operations.
@@ -25,10 +28,7 @@ import kotlin.js.JsName
  * val a = atomic(initialValue, trace)
  * ```
  */
-@Suppress("FunctionName")
-@JsName("atomicfu\$Trace\$")
-public fun Trace(size: Int = 32, format: (Int, String) -> String = { index, text -> "$index: $text" }): Trace =
-    TraceImpl(size, format)
+public expect fun Trace(size: Int = 32, format: (Int, String) -> String = { index, text -> "$index: $text" } ): Trace
 
 /**
  * Trace implementation.
@@ -38,6 +38,7 @@ public sealed class Trace {
     @PublishedApi
     internal open fun append(text: String) {}
 
+    @InlineOnly
     public inline operator fun invoke(text: () -> String) {
         append(text())
     }
@@ -48,15 +49,15 @@ public sealed class Trace {
     public object None : Trace()
 }
 
-private class TraceImpl(size: Int, val format: (Int, String) -> String) : Trace() {
+public class TraceImpl(size: Int, val format: (Int, String) -> String) : Trace() {
     init { require(size >= 1) }
     private val size = ((size shl 1) - 1).takeHighestOneBit() // next power of 2
     private val mask = this.size - 1
     private val trace = arrayOfNulls<String>(this.size)
-    private var index = 0
+    private var index = atomic(0)
 
     override fun append(text: String) {
-        val i = index++
-        trace[i and mask] = format(index, text)
+        val i = index.getAndIncrement()
+        trace[i and mask] = format(index.value, text)
     }
 }

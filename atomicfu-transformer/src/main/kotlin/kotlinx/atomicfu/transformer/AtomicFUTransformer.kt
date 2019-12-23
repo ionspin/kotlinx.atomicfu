@@ -1063,7 +1063,7 @@ class AtomicFUTransformer(
 
         private fun eraseTraceInfo(append: AbstractInsnNode): AbstractInsnNode {
             // remove append trace instructions: from append invocation up to getfield Trace or accessor to Trace field
-            val next = append.next
+            val afterAppend = append.next
             var start = append
             val isGetFieldTrace = { insn: AbstractInsnNode ->
                 insn.opcode == GETFIELD && (start as FieldInsnNode).desc == Type.getObjectType(TRACE).descriptor }
@@ -1074,16 +1074,23 @@ class AtomicFUTransformer(
                 } else false
             }
             while (!(isGetFieldTrace(start) || isTraceAccessor(start))) {
-                val prev = start.previous
-                instructions.remove(start)
-                start = prev
+                start = start.previous
             }
+            // now start contains Trace getfield insn or Trace accessor
             if (isTraceAccessor(start)) {
                 instructions.remove(start.previous.previous)
                 instructions.remove(start.previous)
             }
-            instructions.remove(start)
-            return next
+            if (start.next is VarInsnNode) {
+                val v = (start.next as VarInsnNode).`var`
+                localVariables.removeIf { it.index == v }
+            }
+            while (start != afterAppend) {
+                val next = start.next
+                instructions.remove(start)
+                start = next
+            }
+            return afterAppend
         }
 
         private fun transform(i: AbstractInsnNode): AbstractInsnNode? {
