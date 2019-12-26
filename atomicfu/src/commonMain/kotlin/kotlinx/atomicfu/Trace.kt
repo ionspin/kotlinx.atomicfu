@@ -60,4 +60,6 @@ public class TraceImpl(size: Int, val format: (Int, String) -> String) : Trace()
         val i = index.getAndIncrement()
         trace[i and mask] = format(index.value, text)
     }
+
+    override fun toString(): String = trace.filterNotNull().joinToString()
 }

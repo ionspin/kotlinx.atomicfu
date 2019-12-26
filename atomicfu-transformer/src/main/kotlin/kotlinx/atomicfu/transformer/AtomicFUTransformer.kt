@@ -75,10 +75,12 @@ data class MethodId(val owner: String, val name: String, val desc: String, val i
 
 private const val GET_VALUE = "getValue"
 private const val SET_VALUE = "setValue"
+private const val GET_TRACE = "getTrace"
 
 private const val AFU_CLS = "$AFU_PKG/AtomicFU"
 private const val TRACE_CLS = "$AFU_PKG/TraceKt"
 
+private val TRACE_TO_STRING = MethodId(TRACE, "toString", getMethodDescriptor(STRING_TYPE), INVOKEVIRTUAL)
 private val TRACE_APPEND = MethodId(TRACE, "append", getMethodDescriptor(VOID_TYPE, STRING_TYPE), INVOKEVIRTUAL)
 private val TRACE_FORMAT_FUNC = "L$FUNCTION_2ARGS"
 private val TRACE_DEFAULT_ARGS = "I${OBJECT_TYPE.descriptor}"
@@ -712,6 +714,9 @@ class AtomicFUTransformer(
                     return iv
                 }
             }
+            if (iv.name == GET_TRACE) {
+                return eraseTraceToString(iv)
+            }
             // An operation other than getValue/setValue is used
             if (f.isArray && iv.name == "get") { // "operator get" that retrieves array element, further ops apply to it
                 // fixup atomic operation on this array element
@@ -751,6 +756,22 @@ class AtomicFUTransformer(
                 }
                 return iv.next
             }
+        }
+
+        private fun eraseTraceToString(getTrace: AbstractInsnNode): AbstractInsnNode? {
+            val operation = getTrace.next
+            check(operation is MethodInsnNode && MethodId(operation.owner, operation.name, operation.desc, operation.opcode) == TRACE_TO_STRING)
+                { "$operation operation usage is not supported on Trace" }
+            instructions.remove(getTrace.previous.previous)
+            instructions.remove(getTrace.previous)
+            val endOfTraceUse = FlowAnalyzer(operation).getEndOfUse().next
+            var insn = getTrace
+            while (insn != endOfTraceUse) {
+                val next = insn.next
+                instructions.remove(insn)
+                insn = next
+            }
+            return endOfTraceUse.next
         }
 
         private fun vhOperation(iv: MethodInsnNode, typeInfo: TypeInfo, f: FieldInfo) {
