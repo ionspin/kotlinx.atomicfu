@@ -21,15 +21,18 @@ kotlin {
     targets.metaClass.addTarget = { preset ->
         addNative(delegate.fromPreset(preset, preset.name))
     }
+    js() {
+        nodejs()
+    }
 
     targets {
         // JVM & JS -- always
         fromPreset(presets.jvm, 'jvm')
-        fromPreset(presets.js, 'js') {
-            // TODO: Commented out because browser tests do not work on TeamCity
-            // browser()
-            nodejs()
-        }
+//        fromPreset(presets.js, 'js') {
+//            // TODO: Commented out because browser tests do not work on TeamCity
+//            // browser()
+//            nodejs()
+//        }
 
         if (project.ext.ideaActive) {
             addNative(fromPreset(project.ext.ideaPreset, 'native'))
@@ -137,58 +140,58 @@ dependencies {
 
 // ==== CONFIGURE JS =====
 
-tasks.withType(compileKotlinJs.getClass()) {
-    kotlinOptions {
-        moduleKind = "umd"
-        sourceMap = true
-        metaInfo = true
-    }
-}
+//tasks.withType(compileKotlinJs.getClass()) {
+//    kotlinOptions {
+//        moduleKind = "umd"
+//        sourceMap = true
+//        metaInfo = true
+//    }
+//}
+//
+//compileKotlinJs {
+//    kotlinOptions {
+//        // NOTE: Module base-name must be equal to the package name declared in package.json
+//        def baseName = "kotlinx-atomicfu"
+//        outputFile = new File(outputFile.parent, baseName + ".js")
+//    }
+//}
+//
+//apply from: file("$rootProject.projectDir/gradle/node-js.gradle")
+//apply from: file("$rootProject.projectDir/gradle/test-mocha-js.gradle")
+//apply from: file("$rootProject.projectDir/gradle/publish-npm-js.gradle")
+//
+//// Workaround the problem with Node downloading
+//repositories.whenObjectAdded {
+//    if (it instanceof IvyArtifactRepository) {
+//        metadataSources {
+//            artifact()
+//        }
+//    }
+//}
 
-compileKotlinJs {
-    kotlinOptions {
-        // NOTE: Module base-name must be equal to the package name declared in package.json
-        def baseName = "kotlinx-atomicfu"
-        outputFile = new File(outputFile.parent, baseName + ".js")
-    }
-}
-
-apply from: file("$rootProject.projectDir/gradle/node-js.gradle")
-apply from: file("$rootProject.projectDir/gradle/test-mocha-js.gradle")
-apply from: file("$rootProject.projectDir/gradle/publish-npm-js.gradle")
-
-// Workaround the problem with Node downloading
-repositories.whenObjectAdded {
-    if (it instanceof IvyArtifactRepository) {
-        metadataSources {
-            artifact()
-        }
-    }
-}
-
-def transformedJsFile = compileTestKotlinJs.kotlinOptions.outputFile
-compileTestKotlinJs {
-    kotlinOptions {
-        // NOTE: Module base-name must be equal to the package name declared in package.json
-        def baseName = "kotlinx-atomicfu"
-        outputFile = new File(outputFile.parent, baseName + ".js")
-    }
-}
-def originalJsFile = compileTestKotlinJs.kotlinOptions.outputFile
-
-task transformJS(type: JavaExec, dependsOn: [compileTestKotlinJs]) {
-    main = "kotlinx.atomicfu.transformer.AtomicFUTransformerJSKt"
-    args = [originalJsFile, transformedJsFile]
-    classpath = configurations.transformer
-    inputs.file(originalJsFile)
-    outputs.file(transformedJsFile)
-}
-
-if (project.tasks.findByName('legacyjsNodeTest')) {
-    legacyjsNodeTest.dependsOn transformJS
-} else {
-    jsNodeTest.dependsOn transformJS
-}
+//def transformedJsFile = compileTestKotlinJs.kotlinOptions.outputFile
+//compileTestKotlinJs {
+//    kotlinOptions {
+//        // NOTE: Module base-name must be equal to the package name declared in package.json
+//        def baseName = "kotlinx-atomicfu"
+//        outputFile = new File(outputFile.parent, baseName + ".js")
+//    }
+//}
+//def originalJsFile = compileTestKotlinJs.kotlinOptions.outputFile
+//
+//task transformJS(type: JavaExec, dependsOn: [compileTestKotlinJs]) {
+//    main = "kotlinx.atomicfu.transformer.AtomicFUTransformerJSKt"
+//    args = [originalJsFile, transformedJsFile]
+//    classpath = configurations.transformer
+//    inputs.file(originalJsFile)
+//    outputs.file(transformedJsFile)
+//}
+//
+//if (project.tasks.findByName('legacyjsNodeTest')) {
+//    legacyjsNodeTest.dependsOn transformJS
+//} else {
+//    jsNodeTest.dependsOn transformJS
+//}
 
 // ==== CONFIGURE JVM =====
 
