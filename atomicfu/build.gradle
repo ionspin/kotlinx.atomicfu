@@ -115,60 +115,12 @@ if (!project.ext.ideaActive) {
         nativeMain.dependsOn(nativeInterop)
     }
 
-    afterEvaluate {
+    apply from: "$rootDir/gradle/interop-as-source-set-klib.gradle"
 
-        def cinteropTaskLinux = tasks.named(kotlin.linuxX64().compilations["main"].cinterops[0].interopProcessingTaskName)
-        def cinteropKlibLinux = cinteropTaskLinux.map { it.outputFile }
-        def fakeCinteropCompilationLinux = kotlin.targets["metadata"].compilations[kotlin.sourceSets.nativeInterop.name]
-        def destinationLinux = fakeCinteropCompilationLinux.compileKotlinTask.destinationDir
-
-        def cinteropTaskLinuxArm32 = tasks.named(kotlin.linuxArm32Hfp().compilations["main"].cinterops[0].interopProcessingTaskName)
-        def cinteropKlibLinuxArm32 = cinteropTaskLinuxArm32.map { it.outputFile }
-        def fakeCinteropCompilationLinuxArm32 = kotlin.targets["metadata"].compilations[kotlin.sourceSets.nativeInterop.name]
-        def destinationLinuxArm32 = fakeCinteropCompilationLinuxArm32.compileKotlinTask.destinationDir
-
-        def cinteropTaskLinuxArm64 = tasks.named(kotlin.linuxX64().compilations["main"].cinterops[0].interopProcessingTaskName)
-        def cinteropKlibLinuxArm64 = cinteropTaskLinuxArm64.map { it.outputFile }
-        def fakeCinteropCompilationLinuxArm64 = kotlin.targets["metadata"].compilations[kotlin.sourceSets.nativeInterop.name]
-        def destinationLinuxArm64 = fakeCinteropCompilationLinuxArm64.compileKotlinTask.destinationDir
-
-        task copyCinteropLinuxKlib(type: Zip) {
-            println("copy fake cinterop source set linux")
-            from(zipTree(cinteropKlibLinux).matching {
-                exclude("targets/**") // with Kotlin pre-1.4
-                exclude("default/targets/**") // with Kotlin 1.4
-            })
-            destinationDirectory.set(destinationLinux)
-            archiveFileName.set("${project.name}_${fakeCinteropCompilationLinux.name}.klib")
-            dependsOn cinteropTaskLinux
-        }
-
-        task copyCinteropLinuxArm32Klib(type: Zip) {
-            println("copy fake cinterop source set linux arm32")
-            from(zipTree(cinteropKlibLinuxArm32).matching {
-                exclude("targets/**") // with Kotlin pre-1.4
-                exclude("default/targets/**") // with Kotlin 1.4
-            })
-            destinationDirectory.set(destinationLinuxArm32)
-            archiveFileName.set("${project.name}_${fakeCinteropCompilationLinuxArm32.name}.klib")
-            dependsOn cinteropTaskLinuxArm32
-        }
-
-        task copyCinteropLinuxArm64Klib(type: Zip) {
-            println("copy fake cinterop source set linux arm64")
-            from(zipTree(cinteropKlibLinuxArm64).matching {
-                exclude("targets/**") // with Kotlin pre-1.4
-                exclude("default/targets/**") // with Kotlin 1.4
-            })
-            destinationDirectory.set(destinationLinuxArm64)
-            archiveFileName.set("${project.name}_${fakeCinteropCompilationLinuxArm64.name}.klib")
-            dependsOn cinteropTaskLinuxArm64
-        }
-
-        fakeCinteropCompilationLinux.output.classesDirs.from(files().builtBy(copyCinteropLinuxArm32Klib))
-        fakeCinteropCompilationLinuxArm32.output.classesDirs.from(files().builtBy(copyCinteropLinuxArm32Klib))
-        fakeCinteropCompilationLinuxArm64.output.classesDirs.from(files().builtBy(copyCinteropLinuxArm32Klib))
-    }
+    registerInteropAsSourceSetOutput(
+            kotlin.linuxX64().compilations["main"].cinterops["interop"],
+            kotlin.sourceSets["nativeInterop"]
+    )
 }
 
 configurations {
@@ -338,9 +290,15 @@ jvmTest.dependsOn jvmTestAll
 
 afterEvaluate {
     publishing.publications {
-        jvm.artifactId = 'atomicfu'
-        js.artifactId = 'atomicfu-js'
         metadata.artifactId = 'atomicfu-common'
-        kotlinMultiplatform.artifactId = 'atomicfu-native'
+
+        kotlinMultiplatform {
+            apply from: "$rootDir/gradle/publish-mpp-root-module-in-platform.gradle"
+            publishPlatformArtifactsInRootModule(jvm)
+        }
     }
+}
+
+tasks.matching { it.name == "generatePomFileForKotlinMultiplatformPublication"}.configureEach {
+    dependsOn(tasks["generatePomFileForJvmPublication"])
 }
